@@ -1,0 +1,33 @@
+# Region is iad (US East) on purpose, not Mumbai.
+#
+# This service only proxies to Groq and Anthropic, both US-hosted. Putting it
+# in Mumbai would add an India-to-US hop on every transcription. Supabase
+# stays in Mumbai because the phone talks to it directly, not through here.
+
+app = "dk-voicelog"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 40
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
