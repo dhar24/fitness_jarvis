@@ -62,7 +62,7 @@ async def _project_id(client: httpx.AsyncClient) -> str:
     return _project_id_cache
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 
