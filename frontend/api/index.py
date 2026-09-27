@@ -30,7 +30,7 @@ ALLOWED_ORIGINS = [
         if o.strip()
     ]
 
-    app.add_middleware(
+app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
         allow_methods=["GET", "POST"],
