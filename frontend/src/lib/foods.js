@@ -10,7 +10,7 @@
 
 import { supabase } from "./supabase";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 // Reference data needs a decent text match. Personal rows do not, because
 // being yours is already strong evidence.

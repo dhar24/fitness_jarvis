@@ -2,7 +2,7 @@
 // number that matters this weekend: how long after you stop speaking
 // does the finalised transcript arrive.
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 const KEYTERMS = ["bhindi", "okra", "roti", "rotis", "chapati", "chapatis", "paratha", "parathas", "puri", "poori", "naan", "kulcha",
 "dal", "daal", "sabzi", "sabji", "aloo", "gobi", "baingan", "palak", "matar", "rajma", "chole", "chana", "kadhi", "paneer",

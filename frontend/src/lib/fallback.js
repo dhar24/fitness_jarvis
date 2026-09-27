@@ -5,7 +5,7 @@
 
 import { ACTIVITY_KEYS } from "./parser";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 export async function parseWithModel(raw) {
   const resp = await fetch(`${API_BASE}/api/parse`, {
