@@ -456,6 +456,15 @@ today_totals          {}
 metric_today          { "metric": <metric> }
     One number for today.
 
+metric_remaining      { "metric": <metric> }
+    How much of a metric is still needed today against the target.
+
+suggest_for_metric    { "metric": <metric> }
+    Foods that would close today's gap for that metric.
+
+period_review         { "days": integer }
+    A full report for the last N days. Renders as a screen.
+
 metric_on_day         { "metric": <metric>, "day_offset": integer }
     One number for a past day. day_offset 0 is today, 1 is yesterday.
 
@@ -500,6 +509,14 @@ Rules:
 - "how many days did I hit my protein goal" means goal_days_met.
 - "review the last 7 days", "how was my week" mean period_review.
 - A month means days 30, a week means days 7, a fortnight means days 14.
+
+- "how much more protein do I need", "am I short on fibre", "how much is
+    left" mean metric_remaining.
+- "what should I eat", "suggest something", "what can I have" mean
+    suggest_for_metric. If no metric is named and the question is about
+    eating, use fibre_g.
+- "review the last 7 days", "how was my week", "show me the month" mean
+    period_review.
 """
 
 
@@ -518,6 +535,7 @@ SUMMARY_QUERIES = {
     "today_totals", "metric_today", "metric_on_day", "metric_range_avg",
     "metric_week_compare", "foods_on_day", "activity_count_range",
     "goal_progress_today", "goal_days_met", "range_total", "period_review",
+    "metric_remaining", "suggest_for_metric",
     "unsupported",
 }
 

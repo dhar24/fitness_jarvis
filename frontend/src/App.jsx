@@ -15,6 +15,10 @@ import Household from "./Household";
 import Confirm from "./Confirm";
 import ConfirmDelete from "./ConfirmDelete";
 import FoodFix from "./lib/FoodFix";
+import Report from "./Report";
+import { answerQuestion, runQuery } from "./lib/summary";
+
+
 
 const detailOf = (e) => (Array.isArray(e.activity_detail) ? e.activity_detail[0] : e.activity_detail);
 const foodOf = (e) => (Array.isArray(e.food_detail) ? e.food_detail[0] : e.food_detail);
@@ -55,7 +59,8 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [profile, setProfile] = useState(undefined);
   const [view, setView] = useState("day");
-
+  const [report, setReport] = useState(null);
+  const [offer, setOffer] = useState(null);
   const [state, setState] = useState("idle");
   const [entries, setEntries] = useState([]);
   const [level, setLevel] = useState(0);
@@ -154,15 +159,40 @@ export default function App() {
       setHeard(text);
       setQuestion(null);
       setError(null);
+      // It offered suggestions and you said yes. This is the only piece of
+      // conversational state in the app, and it lasts one turn.
+      if (offer && /^(yes|yeah|yep|sure|go on|please|ok|okay|do it)\b/i.test(text.trim())) {
+        const pending = offer;
+        setOffer(null);
+        setState("thinking");
+        try {
+          present(await runQuery(pending.queryId, pending.params));
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setState("idle");
+        }
+        return;
+      }
 
       let envelope = parse(text);
+
+      const present = (result) => {
+        // A report is a screen. Everything else is a card above the tape.
+        if (result.report) {
+          setReport(result.report);
+          setAnswer(null);
+        } else {
+          setAnswer(result);
+        }
+        setOffer(result.offer ?? null);
+        say(answerToSpeech(result));
+      };
 
       const askAnswer = async () => {
         setState("thinking");
         try {
-          const result = await answerQuestion(text);
-          setAnswer(result);
-          say(answerToSpeech(result));
+          present(await answerQuestion(text));
         } catch (err) {
           setError(err.message);
           say("Something went wrong answering that.");
@@ -299,6 +329,9 @@ export default function App() {
   if (session === null) return <Auth />;
   if (profile === undefined) return null;
   if (profile === null) return <Onboarding onDone={loadMe} />;
+  if (report) {
+    return <Report report={report} onClose={() => setReport(null)} />;
+  }
 
   if (view === "household") {
     return <Household me={profile} onClose={() => setView("day")} />;
@@ -462,7 +495,7 @@ export default function App() {
           {recording ? "Release to log" : busy ? "Working" : "Hold to speak"}
         </button>
 
-        <p className="hint">{recording ? "Listening" : busy ? "" : "Or ask: how many days did I hit my protein goal?"}</p>
+        <p className="hint">{recording ? "Listening" : busy ? "" : "Or ask: how much more fibre today?"}</p>
       </div>
 
       {plan && (

@@ -695,4 +695,88 @@ speaker {
   color: var(--muted);
 }
 
+/* Report screen. */
+
+.mblock {
+  padding: 0.875rem 0;
+  border-top: 1px solid var(--rule);
+}
+
+.mblock__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.mblock__name { font-weight: 500; }
+
+.mblock__met {
+  font-size: 0.8125rem;
+  color: var(--good);
+}
+
+.mblock__part {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.mblock__figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0.25rem 0 0.625rem;
+}
+
+.mblock__num {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.mblock__unit {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.strip {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 3rem;
+}
+
+.strip__target {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--muted);
+  pointer-events: none;
+}
+
+.strip__bar {
+  flex: 1;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--deep);
+}
+
+.strip__bar--met { background: var(--good); }
+.strip__bar--miss { background: var(--muted); }
+.strip__bar--none { background: var(--rule); }
+
+.strip__axis {
+  display: flex;
+  gap: 3px;
+  margin-top: 0.25rem;
+}
+
+.strip__axis span {
+  flex: 1;
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
 

@@ -18,6 +18,7 @@ export default function Onboarding({ onDone }) {
     householdName: "",
     code: "",
     weightKg: "",
+    diet: "",
   });
 
   const [targets, setTargets] = useState({});
@@ -53,6 +54,12 @@ export default function Onboarding({ onDone }) {
     setBusy(true);
     setError(null);
     try {
+      if (form.diet) {
+        const { data: auth } = await (await import("./lib/supabase")).supabase.auth.getUser();
+        const { supabase } = await import("./lib/supabase");
+        await supabase.from("app_user").update({ diet: form.diet }).eq("id", auth?.user?.id);
+      }
+      
       for (const [metric, value] of Object.entries(targets)) {
         if (value !== "" && !Number.isNaN(Number(value))) {
           await setGoal(metric, Number(value));
@@ -151,7 +158,24 @@ export default function Onboarding({ onDone }) {
         Skip any of these. Numbers mean nothing without something to compare them to, and you
         can change them any time by saying so.
       </p>
-
+      <div className="chips" style={{ marginBottom: "1.25rem" }}>
+        {[
+          ["veg", "Vegetarian"],
+          ["egg", "Eggetarian"],
+          ["nonveg", "Everything"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            className={form.diet === key ? "pill pill--on" : "pill"}
+            onClick={() => set("diet", key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="block__note" style={{ marginTop: "-0.75rem" }}>
+        Only used to filter food suggestions.
+      </p>
       <div className="stack">
         {METRICS.map(([metric, label, unit, comparator]) => (
           <label className="mini mini--row" key={metric}>

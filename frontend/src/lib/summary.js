@@ -67,3 +67,15 @@ async function recordMiss(text, queryId) {
     // Telemetry must never break an answer.
   }
 }
+
+export async function runQuery(queryId, params) {
+  if (!isSupported(queryId)) {
+    throw new Error("That is not something I can work out yet.");
+  }
+
+  previous = { query_id: queryId, params: params ?? {} };
+
+  const query = QUERIES[queryId];
+  const data = await query.run(params ?? {});
+  return { queryId, ...query.format(data) };
+}

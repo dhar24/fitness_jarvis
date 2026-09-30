@@ -109,8 +109,19 @@ export function say(text) {
 /** Turns a rendered answer into something worth hearing. */
 export function answerToSpeech(answer) {
   if (!answer) return "";
-  if (answer.say) return answer.say;
 
-  const parts = [answer.value, answer.unit, answer.label].filter(Boolean);
-  return parts.join(" ").replace(/\s+/g, " ").trim();
+  const raw = answer.say
+    ? String(answer.say)
+    : [answer.value, answer.unit, answer.label].filter(Boolean).join(" ");
+
+  const clean = raw.replace(/\s+/g, " ").trim();
+  const words = clean.split(" ");
+  if (words.length <= SPEECH_WORD_CAP) return clean;
+
+  // Cut at the last sentence boundary that fits, so it never ends mid-clause.
+  const head = words.slice(0, SPEECH_WORD_CAP).join(" ");
+  const lastStop = Math.max(head.lastIndexOf(". "), head.lastIndexOf("? "));
+  if (lastStop > 20) return head.slice(0, lastStop + 1);
+  return `${head.replace(/[,;:]$/, "")}. The rest is on screen.`;
 }
+

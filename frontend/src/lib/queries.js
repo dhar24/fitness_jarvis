@@ -6,6 +6,7 @@
 //
 // Metrics read from daily_rollup, which the database keeps current on every
 // write, so a summary is a primary-key lookup rather than an aggregation.
+import { METRIC_LABEL as GOAL_LABEL, METRIC_UNIT } from "./goals";
 import { METRIC_LABEL as GOAL_LABEL } from "./goals";
 import { supabase } from "./supabase";
 import { localDay } from "./log";
@@ -307,24 +308,164 @@ export const QUERIES = {
       };
     },
   },
+  metric_remaining: {
+    async run({ metric }) {
+      const [rows, goals] = await Promise.all([
+        rollups(dayString(0), dayString(0)),
+        supabase
+          .from("goal_target")
+          .select("metric, comparator, target_value")
+          .is("effective_to", null)
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data ?? [];
+          }),
+      ]);
+
+      const goal = goals.find((g) => g.metric === metric);
+      const actual = valueOf(rows[0], metric);
+      const hoursLeft = 24 - new Date().getHours();
+
+      return {
+        metric,
+        actual,
+        target: goal ? Number(goal.target_value) : null,
+        comparator: goal?.comparator ?? "at_least",
+        hoursLeft,
+      };
+    },
+    format({ metric, actual, target, comparator, hoursLeft }) {
+      const name = (GOAL_LABEL[metric] ?? METRIC_LABEL[metric] ?? metric).toLowerCase();
+      const unit = METRIC_UNIT?.[metric] ?? "";
+
+      if (target == null) {
+        return {
+          value: round(actual),
+          unit,
+          label: `${name} so far, no target set`,
+          say: `${round(actual)} ${unit} ${name} so far. You have no target set for it.`,
+          detail: "Say: set my fibre target to 30.",
+        };
+      }
+
+      const gap = comparator === "at_most" ? target - actual : target - actual;
+      const met = comparator === "at_most" ? actual <= target : actual >= target;
+
+      if (met && comparator === "at_least") {
+        return {
+          value: "Done",
+          label: `${name} target met, ${round(actual)} of ${round(target)}`,
+          say: `${name} target met. ${round(actual)} against ${round(target)}.`,
+          detail: null,
+        };
+      }
+
+      if (comparator === "at_most") {
+        return {
+          value: round(Math.abs(gap)),
+          unit,
+          label: gap >= 0 ? `${name} left before your cap` : `${name} over your cap`,
+          say:
+            gap >= 0
+              ? `${round(gap)} ${unit} of ${name} left before your cap.`
+              : `You are ${round(-gap)} ${unit} over your ${name} cap.`,
+          detail: `${round(actual)} of ${round(target)} used. ${hoursLeft} hours left today.`,
+        };
+      }
+
+      return {
+        value: round(gap),
+        unit,
+        label: `${name} still needed today`,
+        say: `${round(gap)} ${unit} of ${name} still needed. Want some suggestions?`,
+        detail: `${round(actual)} of ${round(target)} so far. ${hoursLeft} hours left today.`,
+        offer: { queryId: "suggest_for_metric", params: { metric } },
+      };
+    },
+  },
+
+  suggest_for_metric: {
+    async run({ metric }) {
+      const [rows, goals, me] = await Promise.all([
+        rollups(dayString(0), dayString(0)),
+        supabase
+          .from("goal_target")
+          .select("metric, comparator, target_value")
+          .is("effective_to", null)
+          .then(({ data }) => data ?? []),
+        supabase
+          .from("app_user")
+          .select("diet")
+          .eq("id", (await supabase.auth.getUser()).data?.user?.id)
+          .maybeSingle()
+          .then(({ data }) => data),
+      ]);
+
+      const goal = goals.find((g) => g.metric === metric);
+      const gap = goal ? Number(goal.target_value) - valueOf(rows[0], metric) : 10;
+
+      const kcalGoal = goals.find((g) => g.metric === "kcal_in" && g.comparator === "at_most");
+      const kcalRoom = kcalGoal
+        ? Math.max(0, Number(kcalGoal.target_value) - valueOf(rows[0], "kcal_in"))
+        : null;
+
+      const { data, error } = await supabase.rpc("suggest_foods", {
+        p_metric: metric,
+        p_gap: Math.max(gap, 1),
+        p_kcal_room: kcalRoom,
+        p_diet: me?.diet ?? null,
+        p_limit: 5,
+      });
+
+      if (error) throw error;
+      return { metric, gap, kcalRoom, options: data ?? [] };
+    },
+    format({ metric, gap, kcalRoom, options }) {
+      const name = (GOAL_LABEL[metric] ?? METRIC_LABEL[metric] ?? metric).toLowerCase();
+
+      if (!options.length) {
+        return {
+          value: "Nothing fits",
+          label: `to close ${round(gap)} of ${name}`,
+          say: `Nothing in your food list closes that gap within your calories.`,
+          detail: kcalRoom != null ? `Only ${round(kcalRoom)} kcal of room left today.` : null,
+        };
+      }
+
+      const lines = options.map(
+        (o) =>
+          `${o.qty} x ${o.name}  ${round(o.metric_amount)} ${METRIC_UNIT?.[metric] ?? ""}, ${round(o.kcal)} kcal`
+      );
+
+      const top = options[0];
+      return {
+        value: options.length,
+        unit: options.length === 1 ? "option" : "options",
+        label: `to close ${round(gap)} of ${name}`,
+        say: `Try ${top.qty} ${top.name}. That is about ${round(top.metric_amount)} and ${round(top.kcal)} calories.`,
+        detail: lines.join("\n"),
+      };
+    },
+  },
 
   period_review: {
     async run({ days = 7 }) {
-      const rows = await rollups(dayString(days - 1), dayString(0));
-      const logged = rows.filter((r) => (r.entry_count ?? 0) > 0);
-      const sum = (fn) => rows.reduce((n, r) => n + fn(r), 0);
+      const [{ data: rows, error }, goals] = await Promise.all([
+        supabase.rpc("period_rows", { p_from: dayString(days - 1), p_to: dayString(0) }),
+        supabase
+          .from("goal_target")
+          .select("metric, comparator, target_value")
+          .is("effective_to", null)
+          .then(({ data }) => data ?? []),
+      ]);
 
-      return {
-        days,
-        logged: logged.length,
-        kcal: sum((r) => Number(r.kcal_in ?? 0)),
-        protein: sum((r) => Number(r.macros?.protein_g ?? 0)),
-        fibre: sum((r) => Number(r.macros?.fibre_g ?? 0)),
-        active: sum((r) => Number(r.active_min ?? 0)),
-      };
+      if (error) throw error;
+      return { days, rows: rows ?? [], goals };
     },
-    format({ days, logged, kcal, protein, fibre, active }) {
-      if (!logged) {
+    format({ days, rows, goals }) {
+      const logged = rows.filter((r) => r.logged);
+
+      if (!logged.length) {
         return {
           value: "Nothing",
           label: `logged in the last ${days} days`,
@@ -333,21 +474,17 @@ export const QUERIES = {
         };
       }
 
-      const perDay = (n) => round(n / logged);
+      const avg = (key) => Math.round(logged.reduce((n, r) => n + Number(r[key] ?? 0), 0) / logged.length);
+
+      // A report is a screen, not a spoken paragraph. The say line carries
+      // the headline; the report object carries everything else.
       return {
-        value: logged,
-        unit: logged === 1 ? "day" : "days",
+        value: logged.length,
+        unit: logged.length === 1 ? "day" : "days",
         label: `logged out of ${days}`,
-        say:
-          `${logged} of ${days} days logged. ` +
-          `On a logged day, about ${perDay(kcal)} calories, ` +
-          `${perDay(protein)} grams of protein, and ${perDay(active)} active minutes.`,
-        detail: [
-          `${perDay(kcal)} kcal a day`,
-          `${perDay(protein)}g protein`,
-          `${perDay(fibre)}g fibre`,
-          `${perDay(active)} min active`,
-        ].join("   "),
+        say: `${logged.length} of ${days} days logged, about ${avg("kcal_in")} calories a day.`,
+        detail: null,
+        report: { days, rows, goals },
       };
     },
   },
