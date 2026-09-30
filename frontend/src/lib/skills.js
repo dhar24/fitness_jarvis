@@ -1,21 +1,24 @@
 // Skill handlers. Each owns its write path and returns a row the UI can
 // render. Registered once at module load.
+//
+// day_offset comes from what was said, never from the clock, so logging
+// yesterday's breakfast at 11pm lands on yesterday.
 
 import { supabase } from "./supabase";
 import { registerSkill } from "./router";
-import { loadProfile, localDay, estimateKcal } from "./log";
+import { loadProfile, dayFromOffset, estimateKcal } from "./log";
 import { resolveFood, seedFood, toGrams, macrosFor } from "./foods";
 
-async function createEntry(type, envelope) {
+async function createEntry(type, envelope, dayOffset = 0) {
   const me = await loadProfile();
-  if (!me) throw new Error("No profile row. Run the bootstrap SQL first.");
+  if (!me) throw new Error("Finish setting up your account first.");
 
   const { data, error } = await supabase
     .from("log_entry")
     .insert({
       user_id: me.id,
       type,
-      local_day: localDay(),
+      local_day: dayFromOffset(dayOffset),
       source: "voice",
       raw_transcript: envelope.raw,
       confidence: envelope.confidence,
@@ -30,7 +33,7 @@ async function createEntry(type, envelope) {
 }
 
 registerSkill("activity", async (item, envelope) => {
-  const { entry, me } = await createEntry("activity", envelope);
+  const { entry, me } = await createEntry("activity", envelope, item.day_offset);
 
   const { error } = await supabase.from("activity_detail").insert({
     entry_id: entry.id,
@@ -58,20 +61,22 @@ registerSkill("food", async (item, envelope) => {
     guessed = true;
   }
 
-  // Portion memory. You always have one katori of dal, so "log dal" should
-  // mean one katori rather than a generic serving.
+  // Portion memory: you always have one katori of dal, so "log dal" means
+  // one katori rather than a generic serving.
   const qty = item.qty ?? match.usual?.qty ?? 1;
   const unit = item.unit ?? match.usual?.unit ?? null;
 
   const grams = await toGrams(food, qty, unit);
   const macros = macrosFor(food, grams);
 
-  const { entry } = await createEntry("food", envelope);
+  const { entry } = await createEntry("food", envelope, item.day_offset);
 
   const { error } = await supabase.from("food_detail").insert({
     entry_id: entry.id,
     food_id: food.id,
-    meal: item.meal ?? "unspecified",
+    // 'unset' rather than a guess. The meal is asked for, never inferred
+    // from the clock, because a wrong slot is invisible and permanent.
+    meal: item.meal ?? "unset",
     qty,
     unit: unit ?? "serving",
     grams,
@@ -89,4 +94,3 @@ registerSkill("food", async (item, envelope) => {
     spoken,
   };
 });
-

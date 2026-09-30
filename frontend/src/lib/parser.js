@@ -2,6 +2,11 @@
 // Returns the envelope defined in GRAMMAR.md. When it is unsure it says so
 // rather than guessing, because a wrong silent log is worse than a question.
 
+
+const PAST_DAY = /\b(yesterday|last night|day before|this morning|earlier|on (mon|tues|wednes|thurs|fri|satur|sun)day|\d+ days ago)\b/;
+
+const HANDOFF = /\b(delete|remove|clear|scratch|target|goal|aim for|stay under|instead of)\b/;
+
 const NUMBER_WORDS = {
  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
@@ -160,6 +165,10 @@ export function parse(raw) {
     return { ...envelope, intent: "undo_last", confidence: 0.95 };
   }
 
+   if (PAST_DAY.test(text) || HANDOFF.test(text) || /\b(breakfast|lunch|dinner|snack)\b/.test(text)) {
+    return { ...envelope, intent: "unknown", question: null };
+  }
+
   const stripped = stripLeadVerb(text);
   const body = stripped.text;
 
@@ -183,6 +192,7 @@ export function parse(raw) {
     duration_min: null,
     distance_km: null,
     level: "moderate",
+    day_offset: 0,
   };
   
   const durationMatch = body.match(/(\d+(?:\.\d+)?)\s*(minutes|hours)\b/);

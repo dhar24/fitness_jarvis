@@ -10,7 +10,8 @@
 
 import { supabase } from "./supabase";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+// const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+import { API_BASE } from "./api";
 
 // Reference data needs a decent text match. Personal rows do not, because
 // being yours is already strong evidence.

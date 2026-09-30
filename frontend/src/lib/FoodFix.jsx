@@ -135,7 +135,7 @@ export default function FoodFix({ entry, onClose, onDone }) {
               )}
             </ul>
 
-            <button className="mic mic--on" onClick={() => setMode("create")}>
+            <button className="btn btn--quiet" onClick={() => setMode("create")}>
               None of these, define my own
             </button>
           </>
@@ -171,7 +171,7 @@ export default function FoodFix({ entry, onClose, onDone }) {
             </div>
 
             <div className="row">
-              <button className="mic mic--off" disabled={busy} onClick={create}>
+              <button className="btn" disabled={busy} onClick={create}>
                 Save and use
               </button>
               <button className="linkish" onClick={() => setMode("pick")}>Back to search</button>

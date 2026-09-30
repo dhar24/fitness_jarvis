@@ -4,7 +4,8 @@
 // throws on an unsupported mimeType, so we ask the browser what it can do
 // rather than assuming. Whisper accepts everything in the list.
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+// const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+import { API_BASE } from "./api";
 
 const CANDIDATES = [
   "audio/webm;codecs=opus",
